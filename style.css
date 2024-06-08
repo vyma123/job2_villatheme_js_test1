@@ -44,6 +44,8 @@ section {
   border: 1px solid;
 }
 
+
+
 section .div {
   display: flex;
   flex-direction: column;
@@ -95,4 +97,11 @@ input {
 section .div .section .end {
   width: 15px;
   gap: 5.4rem;
+}
+
+
+
+
+.warning{
+  border: #DC4C64 1px solid;
 }
