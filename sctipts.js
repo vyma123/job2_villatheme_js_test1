@@ -4,7 +4,15 @@ const container = document.querySelector('.main > .div');
 window.addEventListener('load', () => {
   const savedForms =
     JSON.parse(localStorage.getItem('forms')) || [];
-  savedForms.forEach((form) => addInputField(form));
+  savedForms.forEach((form) => {
+    if (form.type === 'textarea') {
+      addTextareaField(form);
+    } else if (form.type === 'btn') {
+      addButtonField(form);
+    } else {
+      addInputField(form);
+    }
+  });
 });
 
 function containsSpecialCharacters(str) {
@@ -17,6 +25,27 @@ function hasMinimumLength(str) {
   return str.length >= 1;
 }
 
+function validateNumericFields(forms) {
+  let containsInvalidNumericValue = false;
+
+  forms.forEach((form) => {
+    const numericInputs = form.querySelectorAll(
+      'input[type="number"]'
+    );
+
+    numericInputs.forEach((input) => {
+      if (input.value < 1) {
+        input.classList.add('error');
+        containsInvalidNumericValue = true;
+      } else {
+        input.classList.remove('error'); // Remove 'error' class if value is valid
+      }
+    });
+  });
+
+  return containsInvalidNumericValue;
+}
+
 function saveToLocalStorage() {
   const forms = document.querySelectorAll(
     '.main > .div > .div'
@@ -25,43 +54,54 @@ function saveToLocalStorage() {
   let containsInvalidLabel = false;
   let containsEmptyName = false;
 
+  // Kiểm tra giá trị của các trường số
+  if (validateNumericFields(forms)) {
+    alert(
+      'Vui lòng nhập giá trị lớn hơn hoặc bằng 1 cho các trường số.'
+    );
+    return;
+  }
+
+  // Tiếp tục lưu dữ liệu vào local storage
   const formData = Array.from(forms).map((form) => {
-    const inputs = form.querySelectorAll('input, select');
+    const inputs = form.querySelectorAll(
+      'input, select, textarea'
+    );
     const data = {};
+
     inputs.forEach((input) => {
-      if (input.id === 'label') {
-        // Check if label has less than 5 characters
-        if (!hasMinimumLength(input.value)) {
-          input.classList.add('warning');
-          containsInvalidLabel = true;
-        } else {
-          input.classList.remove('warning');
-        }
+      if (
+        input.id === 'name' &&
+        input.value.trim() === ''
+      ) {
+        input.classList.add('warning');
+        containsEmptyName = true;
+      } else {
+        input.classList.remove('warning');
       }
-      if (input.id === 'name') {
-        // Check if name is empty
-        if (input.value.trim() === '') {
-          input.classList.add('warning');
-          containsEmptyName = true;
-        } else {
-          input.classList.remove('warning');
-        }
-      }
+
+      // Add event listener to remove warning class on focus
+      input.addEventListener('focus', () => {
+        input.classList.remove('warning');
+      });
+
       data[input.id] =
         input.type === 'checkbox'
           ? input.checked
           : input.value;
     });
+
+    if (form.querySelector('#type')) {
+      data.type = form.querySelector('#type').value;
+    } else if (form.querySelector('#type3')) {
+      data.type = 'btn';
+    } else if (form.querySelector('#wrap2')) {
+      data.type = 'textarea';
+    }
+
     return data;
   });
 
-  // If any label input is invalid, show error message and do not save
-  if (containsInvalidLabel) {
-    alert('label không được bỏ trống');
-    return;
-  }
-
-  // If any name input is empty, show error message and do not save
   if (containsEmptyName) {
     alert('Name không được bỏ trống');
     return;
@@ -203,7 +243,7 @@ function addInputField(data = {}) {
                         </div>
                         <div class="box_input">
                             <label for="label">Label</label>
-                            <input placeholder='required' type="text" id="label" name="label" required value="${
+                            <input  type="text" id="label" name="label" required value="${
                               data.label || ''
                             }">
                         </div>
@@ -240,15 +280,16 @@ function addInputField(data = {}) {
   container.insertAdjacentHTML('beforeend', formHTML);
 }
 
-function addTextareaField() {
+function addTextareaField(data = {}) {
+  const id = Date.now();
   const formHTML = `
-    <div class="div">
+    <div class="div" data-id='${id}'>
         <div class="section">
             <div class="forms">
                 <div class="content">
                     <div class="box_top">
                         <p class="name">Textarea field</p>
-                        <button class="delete">
+                        <button class="delete" onclick="deleteForm(${id})">
                             <ion-icon name="close-outline"></ion-icon>
                         </button>
                     </div>
@@ -256,28 +297,46 @@ function addTextareaField() {
                         <div class="box_input">
                             <label class="wrap2" for="type">Wrap</label>
                             <select id='wrap2'>
-                                <option value="hard">hard</option>
-                                <option value="soft">soft</option>
+                                <option value="hard" ${
+                                  data.wrap2 === 'hard'
+                                    ? 'selected'
+                                    : ''
+                                }>hard</option>
+                                <option value="soft" ${
+                                  data.wrap2 === 'soft'
+                                    ? 'selected'
+                                    : ''
+                                }>soft</option>
                             </select>
                         </div>
                         <div class="box_input">
-                        <label for="name2">Name</label>
-                        <input type="text" id="name2" name="name2" required>
+                            <label for="name2">Name</label>
+                            <input value="${
+                              data.name2 || ''
+                            }" type="text" id="name2" name="name2" required>
                         </div>
                         <div class="box_input">
                             <label for="row2">Rows</label>
-                            <input type="number" id="rows2" name="rows2" required>
+                            <input value="${
+                              data.rows2 || '1' // Giá trị mặc định là 1 nếu không có dữ liệu
+                            }" type="number" id="rows2" minlength="1" name="rows2" required>
                         </div>
                         <div class="box_input">
                             <label for="cols2">Columns</label>
-                            <input type="number" id="cols2" name="cols2" required>
-                        </div>
-                         <div class="box_input end">
-                            <label for="readonly2">Readonly</label>
-                            <input class="last_input" type="checkbox" id="readonly2" name="readonly2" required>
+                            <input value="${
+                              data.cols2 || '1' // Giá trị mặc định là 1 nếu không có dữ liệu
+                            }" type="number" id="cols2" minlength="1" name="cols2" required>
                         </div>
                         <div class="box_input end">
-                            <label for="required2">Required</label>
+                            <label for="readonly2">Readonly</label>
+                            <input value="${
+                              data.readonly2 || 'checked'
+                            }" class="last_input" type="checkbox" id="readonly2" name="readonly2" required>
+                        </div>
+                        <div class="box_input end">
+                            <label value="${
+                              data.required2 || 'checked'
+                            }" for="required2">Required</label>
                             <input class="last_input" type="checkbox" id="required2" name="required2" required>
                         </div>
                     </form>
@@ -288,16 +347,17 @@ function addTextareaField() {
     `;
   container.insertAdjacentHTML('beforeend', formHTML);
 }
+function addButtonField(data = {}) {
+  const id = Date.now();
 
-function addButtonField() {
   const formHTML = `
-    <div class="div">
+    <div class="div" data-id='${id}'>
         <div class="section">
             <div class="forms">
                 <div class="content">
                     <div class="box_top">
                         <p class="name">Button field</p>
-                        <button class="delete">
+                        <button class="delete"  onclick="deleteForm(${id})">
                             <ion-icon name="close-outline"></ion-icon>
                         </button>
                     </div>
@@ -305,35 +365,49 @@ function addButtonField() {
                         <div class="box_input">
                             <label class="label3" for="type">Type</label>
                             <select id='type3'>
-                               <option value="button">button</option>
-                                <option value="reset">reset</option>
-                                <option value="submit">submit</option>
+                               <option value="button" 
+                               ${
+                                 data.button === 'button'
+                                   ? 'selected'
+                                   : ''
+                               }
+                               >button</option>
+                                <option value="reset"  ${
+                                  data.button === 'reset'
+                                    ? 'selected'
+                                    : ''
+                                }>reset</option>
+                                <option value="submit"  ${
+                                  data.button === 'submit'
+                                    ? 'selected'
+                                    : ''
+                                }>submit</option>
 
-                            </select>
-                        </div>
-                         <div class="box_input">
-                            <label class="popover3" for="popover3">Popover</label>
-                            <select id='popover3'>
-                               <option value="hide">hide</option>
-                                <option value="show">show</option>
-                                <option value="toggle">toggle</option>
                             </select>
                         </div>
                         <div class="box_input">
                             <label for="name3">Name</label>
-                            <input type="text" id="name3" name="name3" required>
+                            <input  value="${
+                              data.name3 || ''
+                            }"  type="text" id="name3" name="name3" required>
                         </div>
                         <div class="box_input">
                             <label for="id3">Id</label>
-                            <input type="number" id="id3" name="id3" required placeholder='điền 1 số'>
+                            <input value="${
+                              data.id3 || ''
+                            }" type="text" id="id3" name="id3" required>
                         </div>
                         <div class="box_input">
                             <label for="value3">Value</label>
-                            <input type="text" id="value3" name="value3" required>
+                            <input value="${
+                              data.value3 || ''
+                            } " type="text" id="value3" name="value3" required>
                         </div>
                         <div class="box_input end">
                             <label for="disabled3">Disabled</label>
-                            <input class="last_input" type="checkbox" id="disabled3" name="disabled3" required>
+                            <input 
+                            value="${data.value3 || ''} " 
+                             class="last_input" type="checkbox" id="disabled3" name="disabled3" required>
                         </div>
                     </form>
                 </div>

@@ -100,4 +100,8 @@ section .div .section .end {
 
 .warning {
   border: #DC4C64 1px solid;
+} 
+
+.box_input.error input {
+  border: 1px solid red;
 }
