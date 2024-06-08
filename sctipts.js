@@ -1,97 +1,93 @@
-const fInput = document.getElementsByClassName('fInput');
-const saveD = document.getElementById('saveD');
-const deleteS = document.querySelector('.delete');
+const container = document.querySelector('.main > .div');
 
-let t = 0;
+// Load saved forms from local storage on page load
+window.addEventListener('load', () => {
+  const savedForms =
+    JSON.parse(localStorage.getItem('forms')) || [];
+  savedForms.forEach((form) => addInputField(form));
+});
 
-function removeInput(event) {
-  const button = event.target.closest('button.delete');
-  if (button) {
-    const formDiv = button.closest('.div');
-    const formId = parseInt(
-      formDiv.getAttribute('data-id')
-    );
-    const container =
-      document.querySelector('.main > .div');
-
-    // Remove the form from the DOM
-    formDiv.remove();
-
-    // Remove the corresponding data from localStorage
-    let storedFormData =
-      JSON.parse(localStorage.getItem('formDataInput')) ||
-      [];
-    storedFormData = storedFormData.filter(
-      (_, index) => index !== formId - 1
-    );
-    localStorage.setItem(
-      'formDataInput',
-      JSON.stringify(storedFormData)
-    );
-
-    // Update the IDs and data-id attributes of the remaining forms
-    const remainingForms = document.querySelectorAll(
-      '.div.fInput.box'
-    );
-    remainingForms.forEach((form, index) => {
-      form.setAttribute('data-id', index + 1);
-      form.id = `fInput${index + 1}`;
-      const labelInput = form.querySelector(
-        `#label${formId}`
-      );
-      if (labelInput) {
-        labelInput.id = `label${index + 1}`;
-      }
-      const deleteButton = form.querySelector('.delete');
-      deleteButton.id = `delete${index + 1}`;
-    });
-
-    // Update the global counter t
-    t = remainingForms.length;
-  }
+function containsSpecialCharacters(str) {
+  const specialCharacters =
+    /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
+  return specialCharacters.test(str);
 }
 
-function addInputField() {
-  t += 1;
-  formInputHtml(t);
+function hasMinimumLength(str) {
+  return str.length >= 1;
+}
 
-  // Lấy index của form mới thêm vào
-  const newIndex = t;
-
-  // Cập nhật id và data-id của các form
-  const allForms = document.querySelectorAll(
-    '.div.fInput.box'
+function saveToLocalStorage() {
+  const forms = document.querySelectorAll(
+    '.main > .div > .div'
   );
-  allForms.forEach((form, index) => {
-    form.setAttribute('data-id', index + 1);
-    form.id = `fInput${index + 1}`;
-    const deleteButton = form.querySelector('.delete');
-    deleteButton.id = `delete${index + 1}`;
+
+  let containsInvalidLabel = false;
+  let containsEmptyName = false;
+
+  const formData = Array.from(forms).map((form) => {
+    const inputs = form.querySelectorAll('input, select');
+    const data = {};
+    inputs.forEach((input) => {
+      if (input.id === 'label') {
+        // Check if label has less than 5 characters
+        if (!hasMinimumLength(input.value)) {
+          input.classList.add('warning');
+          containsInvalidLabel = true;
+        } else {
+          input.classList.remove('warning');
+        }
+      }
+      if (input.id === 'name') {
+        // Check if name is empty
+        if (input.value.trim() === '') {
+          input.classList.add('warning');
+          containsEmptyName = true;
+        } else {
+          input.classList.remove('warning');
+        }
+      }
+      data[input.id] =
+        input.type === 'checkbox'
+          ? input.checked
+          : input.value;
+    });
+    return data;
   });
 
-  // Thêm sự kiện click cho nút xóa của form mới
-  const deleteBtn = document.getElementById(
-    `delete${newIndex}`
-  );
-  deleteBtn.addEventListener('click', removeInput);
+  // If any label input is invalid, show error message and do not save
+  if (containsInvalidLabel) {
+    alert('label không được bỏ trống');
+    return;
+  }
+
+  // If any name input is empty, show error message and do not save
+  if (containsEmptyName) {
+    alert('Name không được bỏ trống');
+    return;
+  }
+
+  localStorage.setItem('forms', JSON.stringify(formData));
 }
 
-function formInputHtml(t, data = {}) {
+function addInputField(data = {}) {
+  const id = Date.now(); // unique identifier for each form
+
   const formHTML = `
-    <div class="div fInput box" id="fInput${t}" data-id="${t}">
+    <div class="div" data-id="${id}">
         <div class="section">
             <div class="forms">
                 <div class="content">
                     <div class="box_top">
                         <p class="name">Input field</p>
-                        <button id="delete${t}" class="delete">
+                        <button class="delete" onclick="deleteForm(${id})">
                             <ion-icon name="close-outline"></ion-icon>
                         </button>
                     </div>
-                    <form class="form" name="forms">
+                    <form class="form" name='forms'>
                         <div class="box_input">
                             <label class="label" for="type">Type</label>
-                            <select id="type${t}" name="type">
+                            <select id='type'>
                                 <option value="button" ${
                                   data.type === 'button'
                                     ? 'selected'
@@ -113,7 +109,8 @@ function formInputHtml(t, data = {}) {
                                     : ''
                                 }>date</option>
                                 <option value="datetime" ${
-                                  data.type === 'datetime'
+                                  data.type ===
+                                  'datetime-local'
                                     ? 'selected'
                                     : ''
                                 }>datetime-local</option>
@@ -206,33 +203,33 @@ function formInputHtml(t, data = {}) {
                         </div>
                         <div class="box_input">
                             <label for="label">Label</label>
-                            <input placeholder='bắt buộc' type="text" id="label${t}" name="label" value="${
-    data.label || ''
-  }" required>
+                            <input placeholder='required' type="text" id="label" name="label" required value="${
+                              data.label || ''
+                            }">
                         </div>
                         <div class="box_input">
                             <label for="name">Name</label>
-                            <input type="text" id="name${t}" name="name" value="${
-    data.name || ''
-  }" required>
+                            <input type="text" placeholder='required' id="name" name="name" required value="${
+                              data.name || ''
+                            }">
                         </div>
                         <div class="box_input">
                             <label for="id">Id</label>
-                            <input type="text" id="id${t}" name="id" value="${
-    data.id || ''
-  }" required>
+                            <input type="text" id="id" name="id" required value="${
+                              data.id || ''
+                            }">
                         </div>
                         <div class="box_input">
                             <label for="placeholder">Placeholder</label>
-                            <input type="text" id="placeholder${t}" name="placeholder" value="${
-    data.placeholder || ''
-  }" required>
+                            <input type="text" id="placeholder" name="placeholder" required value="${
+                              data.placeholder || ''
+                            }">
                         </div>
                         <div class="box_input end">
                             <label for="required">Required</label>
-                            <input class="last_input" type="checkbox" id="required${t}" name="required" ${
-    data.required ? 'checked' : ''
-  }>
+                            <input class="last_input" type="checkbox" id="required" name="required" ${
+                              data.required ? 'checked' : ''
+                            }>
                         </div>
                     </form>
                 </div>
@@ -241,51 +238,126 @@ function formInputHtml(t, data = {}) {
     </div>
   `;
   container.insertAdjacentHTML('beforeend', formHTML);
-
-  const deleteBtn = document.getElementById(`delete${t}`);
-  deleteBtn.addEventListener('click', removeInput);
 }
 
-window.onload = function () {
-  const storedFormData =
-    JSON.parse(localStorage.getItem('formDataInput')) || [];
-  if (storedFormData.length > 0) {
-    for (let i = 0; i < storedFormData.length; i++) {
-      formInputHtml(i + 1, storedFormData[i]);
-    }
-  }
-};
+function addTextareaField() {
+  const formHTML = `
+    <div class="div">
+        <div class="section">
+            <div class="forms">
+                <div class="content">
+                    <div class="box_top">
+                        <p class="name">Textarea field</p>
+                        <button class="delete">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    <form class="form">
+                        <div class="box_input">
+                            <label class="wrap2" for="type">Wrap</label>
+                            <select id='wrap2'>
+                                <option value="hard">hard</option>
+                                <option value="soft">soft</option>
+                            </select>
+                        </div>
+                        <div class="box_input">
+                        <label for="name2">Name</label>
+                        <input type="text" id="name2" name="name2" required>
+                        </div>
+                        <div class="box_input">
+                            <label for="row2">Rows</label>
+                            <input type="number" id="rows2" name="rows2" required>
+                        </div>
+                        <div class="box_input">
+                            <label for="cols2">Columns</label>
+                            <input type="number" id="cols2" name="cols2" required>
+                        </div>
+                         <div class="box_input end">
+                            <label for="readonly2">Readonly</label>
+                            <input class="last_input" type="checkbox" id="readonly2" name="readonly2" required>
+                        </div>
+                        <div class="box_input end">
+                            <label for="required2">Required</label>
+                            <input class="last_input" type="checkbox" id="required2" name="required2" required>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+  container.insertAdjacentHTML('beforeend', formHTML);
+}
 
-saveD.addEventListener('click', myfunc);
+function addButtonField() {
+  const formHTML = `
+    <div class="div">
+        <div class="section">
+            <div class="forms">
+                <div class="content">
+                    <div class="box_top">
+                        <p class="name">Button field</p>
+                        <button class="delete">
+                            <ion-icon name="close-outline"></ion-icon>
+                        </button>
+                    </div>
+                    <form class="form">
+                        <div class="box_input">
+                            <label class="label3" for="type">Type</label>
+                            <select id='type3'>
+                               <option value="button">button</option>
+                                <option value="reset">reset</option>
+                                <option value="submit">submit</option>
 
-function myfunc() {
-  const arr1 = [];
-  for (let i = 0; i < fInput.length; i++) {
-    const label = document.getElementById(`label${i + 1}`);
-    const type = document.getElementById(`type${i + 1}`);
-    const name = document.getElementById(`name${i + 1}`);
-    const id = document.getElementById(`id${i + 1}`);
-    const placeholder = document.getElementById(
-      `placeholder${i + 1}`
-    );
-    const required = document.getElementById(
-      `required${i + 1}`
-    );
+                            </select>
+                        </div>
+                         <div class="box_input">
+                            <label class="popover3" for="popover3">Popover</label>
+                            <select id='popover3'>
+                               <option value="hide">hide</option>
+                                <option value="show">show</option>
+                                <option value="toggle">toggle</option>
+                            </select>
+                        </div>
+                        <div class="box_input">
+                            <label for="name3">Name</label>
+                            <input type="text" id="name3" name="name3" required>
+                        </div>
+                        <div class="box_input">
+                            <label for="id3">Id</label>
+                            <input type="number" id="id3" name="id3" required placeholder='điền 1 số'>
+                        </div>
+                        <div class="box_input">
+                            <label for="value3">Value</label>
+                            <input type="text" id="value3" name="value3" required>
+                        </div>
+                        <div class="box_input end">
+                            <label for="disabled3">Disabled</label>
+                            <input class="last_input" type="checkbox" id="disabled3" name="disabled3" required>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+  container.insertAdjacentHTML('beforeend', formHTML);
+}
 
-    if (label) {
-      const formD = {
-        label: label.value,
-        type: type.value,
-        name: name.value,
-        id: id.value,
-        placeholder: placeholder.value,
-        required: required.value,
-      };
-      arr1.push(formD);
-    }
-  }
-  localStorage.setItem(
-    'formDataInput',
-    JSON.stringify(arr1)
+function deleteForm(id) {
+  const form = document.querySelector(
+    `.main > .div > .div[data-id="${id}"]`
   );
+  if (form) {
+    form.remove();
+    saveToLocalStorage(); // Save the updated forms to local storage
+  }
 }
+
+// Save data when the save button is clicked
+document
+  .getElementById('saveD')
+  .addEventListener('click', (event) => {
+    event.preventDefault();
+    saveToLocalStorage();
+  });

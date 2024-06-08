@@ -44,8 +44,6 @@ section {
   border: 1px solid;
 }
 
-
-
 section .div {
   display: flex;
   flex-direction: column;
@@ -78,6 +76,7 @@ section .div .section .box_top button {
 section .div .section .box_top .name {
   font-weight: 700;
 }
+
 section .div .section .box_input {
   display: flex;
   align-items: center;
@@ -99,9 +98,6 @@ section .div .section .end {
   gap: 5.4rem;
 }
 
-
-
-
-.warning{
+.warning {
   border: #DC4C64 1px solid;
 }
